@@ -33,6 +33,7 @@ SOFTWARE.
 #include <mutex>
 #include <vector>
 #include <algorithm>
+#include <sol/sol.hpp>
 
 namespace lsignal
 {
@@ -161,11 +162,18 @@ namespace lsignal
 
 	// signal
 
+	class lua_signal {
+	public:
+		virtual ~lua_signal() {}
+
+		virtual connection lua_connect(sol::function fn, slot* owner) = 0;
+	};
+
 	template<typename>
 	class signal;
 
 	template<typename R, typename... Args>
-	class signal<R(Args...)>
+	class signal<R(Args...)> : public lua_signal
 	{
 	public:
 		using result_type = R;
@@ -185,6 +193,8 @@ namespace lsignal
 
 		void connect(signal *sg);
 		void disconnect(signal *sg);
+
+		virtual connection lua_connect(sol::function fn, slot* owner) override;
 
 		connection connect(const callback_type& fn, slot *owner = nullptr);
 		connection connect(callback_type&& fn, slot *owner = nullptr);
@@ -300,6 +310,11 @@ namespace lsignal
 	void signal<R(Args...)>::set_lock(const bool lock)
 	{
 		_locked = lock;
+	}
+
+	template<typename R, typename... Args>
+	connection signal<R(Args...)>::lua_connect(sol::function fn, slot* owner) {
+		return connect(fn, owner);
 	}
 
 	template<typename R, typename... Args>
